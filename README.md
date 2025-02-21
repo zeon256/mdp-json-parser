@@ -10,9 +10,9 @@ To use this library in your Maven project, add the following dependency to your 
 
 ```xml
 <dependency>
-  <groupId>com.github.zeon256</groupId>
-  <artifactId>mdp-json-parser</artifactId>
-  <version>1.0-SNAPSHOT</version>
+    <groupId>com.github.zeon256</groupId>
+    <artifactId>mdp-json-parser</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -28,68 +28,92 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.zeon256:mdp-json-parser:1.0-SNAPSHOT'
+    implementation 'com.github.zeon256:mdp-json-parser:1.1.0'
 }
 ```
 
 ## Usage
-
-1. Parse JSON message into Mdp object:
+1. Set up Gson with custom type adapters:
 
 ```java
 import com.google.gson.Gson;
-import com.github.zeon256.mdp.Mdp;
+import com.google.gson.GsonBuilder;
+import com.github.zeon256.mdp.*;
 
-Gson gson = new Gson();
-String json = "{\"cat\":\"info\",\"value\":{\"infoValue\":\"Robot is ready!\"}}";
-Mdp message = gson.fromJson(json, Mdp.class);
-
-System.out.println(message.getCat()); // Outputs: INFO
-System.out.println(message.getValue().getInfoValue()); // Outputs: Robot is ready!
+Gson gson = new GsonBuilder()
+    .registerTypeAdapter(Mdp.class, new MdpDeserializer())
+    .registerTypeAdapter(InfoValue.class, new InfoValueDeserializer())
+    .registerTypeAdapter(ErrorValue.class, new ErrorValueDeserializer())
+    .registerTypeAdapter(StatusValue.class, new StatusValueDeserializer())
+    .registerTypeAdapter(ParameterizedControlValue.class, new ParameterizedControlValue.Serializer())
+    .create();
 ```
 
-2. Create and serialize Mdp object into JSON message:
+2. Parse JSON message into Mdp object:
 
 ```java
-import com.google.gson.Gson;
-import com.github.zeon256.mdp.Mdp;
-import com.github.zeon256.mdp.Value;
-import com.github.zeon256.mdp.LocationValue;
+String json = "{\"cat\":\"info\",\"value\":\"Robot is ready!\"}";
+Mdp<?> message = gson.fromJson(json, Mdp.class);
 
-Gson gson = new Gson();
-Mdp message = new Mdp();
-message.setCat(Mdp.Cat.LOCATION);
+System.out.println(message.getCat()); // Outputs: INFO
+        System.out.println(message.getValue()); // Outputs: Robot is ready!
+```
 
-Value value = new Value();
+3. Create and serialize Mdp object into JSON message:
+
+```java
 LocationValue locationValue = new LocationValue(1, 2, 3);
-value.setLocationValue(locationValue);
-message.setValue(value);
+Mdp<LocationValue> message = new Mdp<>(Mdp.Cat.LOCATION, locationValue);
 
 String json = gson.toJson(message);
 System.out.println(json);
-// Outputs: {"cat":"location","value":{"locationValue":{"x":1,"y":2,"d":3}}}
+// Outputs: {"cat":"location","value":{"x":1,"y":2,"d":3}}
 ```
 
-3. Handle different message types:
+4. Handle different message types:
 
 ```java
-import com.github.zeon256.mdp.Mdp;
-import com.github.zeon256.mdp.Value;
-
-public void handleMessage(Mdp message) {
+public void handleMessage(Mdp<?> message) {
     switch (message.getCat()) {
         case INFO:
-            System.out.println("Info: " + message.getValue().getInfoValue());
+            System.out.println("Info: " + message.getValue());
             break;
         case ERROR:
-            System.out.println("Error: " + message.getValue().getErrorValue());
+            System.out.println("Error: " + message.getValue());
             break;
         case LOCATION:
-            LocationValue loc = message.getValue().getLocationValue();
+            LocationValue loc = (LocationValue) message.getValue();
             System.out.printf("Location: (%d, %d, %d)%n", loc.getX(), loc.getY(), loc.getD());
             break;
-        // Handle other message types...
+        case STATUS:
+            System.out.println("Status: " + message.getValue());
+            break;
+        case OBSTACLES:
+            ObstaclesValue obstacles = (ObstaclesValue) message.getValue();
+            System.out.println("Obstacles: " + obstacles.getObstacles());
+            break;
+        case IMAGE_REC:
+            ImageRecValue imageRec = (ImageRecValue) message.getValue();
+            System.out.printf("Image Recognition: ID %s, Obstacle %s%n",
+                    imageRec.getImageId(), imageRec.getObstacleId());
+            break;
+        case CONTROL:
+            System.out.println("Control: " + message.getValue());
+            break;
     }
 }
-
 ```
+
+## Custom Type Adapters
+
+This library includes custom type adapters for proper serialization and deserialization of MDP messages:
+
+- `MdpDeserializer`: Handles deserialization of the main Mdp class.
+- `InfoValueDeserializer`: Deserializes InfoValue enums.
+- `ErrorValueDeserializer`: Deserializes ErrorValue enums.
+- `StatusValueDeserializer`: Deserializes StatusValue enums.
+- `ParameterizedControlValue.Serializer`: Handles both serialization and deserialization of ParameterizedControlValue objects.
+
+Make sure to register these type adapters with your Gson instance as shown in the usage example.
+
+

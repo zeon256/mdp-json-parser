@@ -30,21 +30,11 @@ public class ImageRecValue {
         this.imageId = imageId;
     }
 
-    public ImageRecValue withImageId(String imageId) {
-        this.imageId = imageId;
-        return this;
-    }
-
     public String getObstacleId() {
         return obstacleId;
     }
 
     public void setObstacleId(String obstacleId) {
         this.obstacleId = obstacleId;
-    }
-
-    public ImageRecValue withObstacleId(String obstacleId) {
-        this.obstacleId = obstacleId;
-        return this;
     }
 }

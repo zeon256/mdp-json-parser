@@ -1,286 +1,336 @@
 package rs.inve;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.GsonBuilder;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class MdpMessageTest {
+import java.util.Arrays;
 
-    private final Gson gson = new Gson();
+class MdpMessageTest {
 
-    @Test
-    public void testInfoMessage() {
-        Mdp mdp = new Mdp();
-        mdp.setCat(Mdp.Cat.INFO);
-        Value value = new Value();
-        value.setInfoValue("You are connected to the RPi!");
-        mdp.setValue(value);
+    private Gson gson;
 
-        String json = gson.toJson(mdp);
-        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
-
-        assertEquals("info", jsonObject.get("cat").getAsString());
-        assertEquals("You are connected to the RPi!", jsonObject.get("value").getAsJsonObject().get("infoValue").getAsString());
+    @BeforeEach
+    void setUp() {
+        gson = new GsonBuilder()
+                .registerTypeAdapter(Mdp.class, new MdpDeserializer())
+                .registerTypeAdapter(InfoValue.class, new InfoValueDeserializer())
+                .registerTypeAdapter(ErrorValue.class, new ErrorValueDeserializer())
+                .registerTypeAdapter(StatusValue.class, new StatusValueDeserializer())
+                .registerTypeAdapter(ParameterizedControlValue.class, new ParameterizedControlValue.Serializer())
+                .create();
     }
 
     @Test
-    public void testErrorMessage() {
-        Mdp mdp = new Mdp();
-        mdp.setCat(Mdp.Cat.ERROR);
-        Value value = new Value();
-        value.setErrorValue(Value.ErrorValue.API_IS_DOWN_START_COMMAND_ABORTED);
-        mdp.setValue(value);
-
-        String json = gson.toJson(mdp);
-        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
-
-        assertEquals("error", jsonObject.get("cat").getAsString());
-        assertEquals("API is down, start command aborted.", jsonObject.get("value").getAsJsonObject().get("errorValue").getAsString());
+    void testInfoMessageSerialization() {
+        Mdp<InfoValue> infoMessage = new Mdp<>(Mdp.Cat.INFO, InfoValue.CONNECTED);
+        String json = gson.toJson(infoMessage);
+        assertEquals("{\"cat\":\"info\",\"value\":\"You are connected to the RPi!\"}", json);
     }
 
     @Test
-    public void testLocationMessage() {
-        Mdp mdp = new Mdp();
-        mdp.setCat(Mdp.Cat.LOCATION);
-        Value value = new Value();
-        LocationValue locationValue = new LocationValue(1, 2, 3);
-        value.setLocationValue(locationValue);
-        mdp.setValue(value);
+    void testInfoMessageDeserialization() {
+        String[] infoJsonSamples = {
+                "{\"cat\":\"info\",\"value\":\"You are connected to the RPi!\"}",
+                "{\"cat\":\"info\",\"value\":\"Robot is ready!\"}",
+                "{\"cat\":\"info\",\"value\":\"You are reconnected!\"}",
+                "{\"cat\":\"info\",\"value\":\"Starting robot on path!\"}",
+                "{\"cat\":\"info\",\"value\":\"Commands queue finished!\"}",
+                "{\"cat\":\"info\",\"value\":\"Requesting path from algo...\"}",
+                "{\"cat\":\"info\",\"value\":\"Commands and path received Algo API. Robot is ready to move\"}",
+                "{\"cat\":\"info\",\"value\":\"Images stitched!\"}"
+        };
 
-        String json = gson.toJson(mdp);
-        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
-
-        assertEquals("location", jsonObject.get("cat").getAsString());
-        JsonObject locValue = jsonObject.get("value").getAsJsonObject().get("locationValue").getAsJsonObject();
-        assertEquals(1, locValue.get("x").getAsInt());
-        assertEquals(2, locValue.get("y").getAsInt());
-        assertEquals(3, locValue.get("d").getAsInt());
+        for (String json : infoJsonSamples) {
+            Mdp<?> infoMessage = gson.fromJson(json, Mdp.class);
+            assertEquals(Mdp.Cat.INFO, infoMessage.getCat());
+            assertInstanceOf(InfoValue.class, infoMessage.getValue());
+        }
     }
 
     @Test
-    public void testImageRecMessage() {
-        Mdp mdp = new Mdp();
-        mdp.setCat(Mdp.Cat.IMAGE_REC);
-        Value value = new Value();
-        ImageRecValue imageRecValue = new ImageRecValue("A", "1");
-        value.setImageRecValue(imageRecValue);
-        mdp.setValue(value);
-
-        String json = gson.toJson(mdp);
-        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
-
-        assertEquals("image-rec", jsonObject.get("cat").getAsString());
-        JsonObject imgRecValue = jsonObject.get("value").getAsJsonObject().get("imageRecValue").getAsJsonObject();
-        assertEquals("A", imgRecValue.get("image_id").getAsString());
-        assertEquals("1", imgRecValue.get("obstacle_id").getAsString());
+    void testErrorMessageSerialization() {
+        Mdp<ErrorValue> errorMessage = new Mdp<>(Mdp.Cat.ERROR, ErrorValue.API_DOWN);
+        String json = gson.toJson(errorMessage);
+        assertEquals("{\"cat\":\"error\",\"value\":\"API is down, start command aborted.\"}", json);
     }
 
     @Test
-    public void testStatusMessage() {
-        Mdp mdp = new Mdp();
-        mdp.setCat(Mdp.Cat.STATUS);
-        Value value = new Value();
-        value.setStatusValue(Value.StatusValue.RUNNING);
-        mdp.setValue(value);
+    void testErrorMessageDeserialization() {
+        String[] errorJsonSamples = {
+                "{\"cat\":\"error\",\"value\":\"API is down, start command aborted.\"}",
+                "{\"cat\":\"error\",\"value\":\"Command queue is empty, did you set obstacles?\"}",
+                "{\"cat\":\"error\",\"value\":\"Something went wrong when requesting stitch from the API.\"}",
+                "{\"cat\":\"error\",\"value\":\"Something went wrong when requesting path from Algo API.\"}"
+        };
 
-        String json = gson.toJson(mdp);
-        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
-
-        assertEquals("status", jsonObject.get("cat").getAsString());
-        assertEquals("running", jsonObject.get("value").getAsJsonObject().get("statusValue").getAsString());
+        for (String json : errorJsonSamples) {
+            Mdp<?> errorMessage = gson.fromJson(json, Mdp.class);
+            assertEquals(Mdp.Cat.ERROR, errorMessage.getCat());
+            assertInstanceOf(ErrorValue.class, errorMessage.getValue());
+        }
     }
 
     @Test
-    public void testObstaclesMessage() {
-        Mdp mdp = new Mdp();
-        mdp.setCat(Mdp.Cat.OBSTACLES);
-        Value value = new Value();
-        ObstaclesValue obstaclesValue = new ObstaclesValue();
-        obstaclesValue.setObstacles(Arrays.asList(
-                new Obstacle(5, 10, 1, 2),
-                new Obstacle(10, 20, 2, 1)
-        ));
-        obstaclesValue.setMode("0");
-        value.setObstaclesValue(obstaclesValue);
-        mdp.setValue(value);
-
-        String json = gson.toJson(mdp);
-        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
-
-        assertEquals("obstacles", jsonObject.get("cat").getAsString());
-        JsonObject obsValue = jsonObject.get("value").getAsJsonObject().get("obstaclesValue").getAsJsonObject();
-        assertEquals(2, obsValue.get("obstacles").getAsJsonArray().size());
-        assertEquals("0", obsValue.get("mode").getAsString());
+    void testLocationMessageSerialization() {
+        LocationValue location = new LocationValue(1, 2, 3);
+        Mdp<LocationValue> locationMessage = new Mdp<>(Mdp.Cat.LOCATION, location);
+        String json = gson.toJson(locationMessage);
+        assertEquals("{\"cat\":\"location\",\"value\":{\"x\":1,\"y\":2,\"d\":3}}", json);
     }
 
     @Test
-    public void testControlMessage() {
-        Mdp mdp = new Mdp();
-        mdp.setCat(Mdp.Cat.CONTROL);
-        Value value = new Value();
-        value.setControlValue("FW090");
-        mdp.setValue(value);
-
-        String json = gson.toJson(mdp);
-        JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
-
-        assertEquals("control", jsonObject.get("cat").getAsString());
-        assertEquals("FW090", jsonObject.get("value").getAsJsonObject().get("controlValue").getAsString());
+    void testLocationMessageDeserialization() {
+        String json = "{\"cat\":\"location\",\"value\":{\"x\":1,\"y\":2,\"d\":3}}";
+        Mdp<?> locationMessage = gson.fromJson(json, Mdp.class);
+        assertEquals(Mdp.Cat.LOCATION, locationMessage.getCat());
+        assertInstanceOf(LocationValue.class, locationMessage.getValue());
+        LocationValue location = (LocationValue) locationMessage.getValue();
+        assertEquals(1, location.getX());
+        assertEquals(2, location.getY());
+        assertEquals(3, location.getD());
     }
 
     @Test
-    public void testDeserialization() {
-        String json = "{\"cat\":\"location\",\"value\":{\"locationValue\":{\"x\":1,\"y\":2,\"d\":3}}}";
-        Mdp mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.LOCATION, mdp.getCat());
-        LocationValue locationValue = mdp.getValue().getLocationValue();
-        assertNotNull(locationValue);
-        assertEquals(1, locationValue.getX());
-        assertEquals(2, locationValue.getY());
-        assertEquals(3, locationValue.getD());
+    void testImageRecognitionMessageSerialization() {
+        ImageRecValue imageRec = new ImageRecValue("A", "1");
+        Mdp<ImageRecValue> imageRecMessage = new Mdp<>(Mdp.Cat.IMAGE_REC, imageRec);
+        String json = gson.toJson(imageRecMessage);
+        assertEquals("{\"cat\":\"image-rec\",\"value\":{\"image_id\":\"A\",\"obstacle_id\":\"1\"}}", json);
     }
 
     @Test
-    public void testInfoMessageDeserialization() {
-        String json = "{\"cat\":\"info\",\"value\":{\"infoValue\":\"You are connected to the RPi!\"}}";
-        Mdp mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.INFO, mdp.getCat());
-        assertEquals("You are connected to the RPi!", mdp.getValue().getInfoValue());
-
-        json = "{\"cat\":\"info\",\"value\":{\"infoValue\":{\"capturing_image\":{\"obstacle_id\":123}}}}";
-        mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.INFO, mdp.getCat());
-        JsonObject infoValue = gson.toJsonTree(mdp.getValue().getInfoValue()).getAsJsonObject();
-        assertEquals(123, infoValue.getAsJsonObject("capturing_image").get("obstacle_id").getAsInt());
+    void testImageRecognitionMessageDeserialization() {
+        String json = "{\"cat\":\"image-rec\",\"value\":{\"image_id\":\"A\",\"obstacle_id\":\"1\"}}";
+        Mdp<?> imageRecMessage = gson.fromJson(json, Mdp.class);
+        assertEquals(Mdp.Cat.IMAGE_REC, imageRecMessage.getCat());
+        assertInstanceOf(ImageRecValue.class, imageRecMessage.getValue());
+        ImageRecValue imageRec = (ImageRecValue) imageRecMessage.getValue();
+        assertEquals("A", imageRec.getImageId());
+        assertEquals("1", imageRec.getObstacleId());
     }
 
     @Test
-    public void testErrorMessageDeserialization() {
-        String json = "{\"cat\":\"error\",\"value\":{\"errorValue\":\"API is down, start command aborted.\"}}";
-        Mdp mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.ERROR, mdp.getCat());
-        assertEquals(Value.ErrorValue.API_IS_DOWN_START_COMMAND_ABORTED, mdp.getValue().getErrorValue());
+    void testStatusMessageSerialization() {
+        Mdp<StatusValue> statusMessage = new Mdp<>(Mdp.Cat.STATUS, StatusValue.RUNNING);
+        String json = gson.toJson(statusMessage);
+        assertEquals("{\"cat\":\"status\",\"value\":\"running\"}", json);
     }
 
     @Test
-    public void testLocationMessageDeserialization() {
-        String json = "{\"cat\":\"location\",\"value\":{\"locationValue\":{\"x\":1,\"y\":2,\"d\":3}}}";
-        Mdp mdp = gson.fromJson(json, Mdp.class);
+    void testStatusMessageDeserialization() {
+        String[] statusJsonSamples = {
+                "{\"cat\":\"status\",\"value\":\"running\"}",
+                "{\"cat\":\"status\",\"value\":\"finished\"}"
+        };
 
-        assertEquals(Mdp.Cat.LOCATION, mdp.getCat());
-        LocationValue loc = mdp.getValue().getLocationValue();
-        assertNotNull(loc);
-        assertEquals(1, loc.getX());
-        assertEquals(2, loc.getY());
-        assertEquals(3, loc.getD());
+        String[] correctStatuses = {"running", "finished"};
+
+        for (int i = 0; i < statusJsonSamples.length; i++) {
+            String json = statusJsonSamples[i];
+            Mdp<?> statusMessage = gson.fromJson(json, Mdp.class);
+            assertEquals(Mdp.Cat.STATUS, statusMessage.getCat());
+            assertInstanceOf(StatusValue.class, statusMessage.getValue());
+            assertEquals(correctStatuses[i], statusMessage.getValue().toString());
+        }
     }
 
     @Test
-    public void testImageRecognitionMessageDeserialization() {
-        String json = "{\"cat\":\"image-rec\",\"value\":{\"imageRecValue\":{\"image_id\":\"A\",\"obstacle_id\":\"1\"}}}";
-        Mdp mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.IMAGE_REC, mdp.getCat());
-        ImageRecValue rec = mdp.getValue().getImageRecValue();
-        assertNotNull(rec);
-        assertEquals("A", rec.getImageId());
-        assertEquals("1", rec.getObstacleId());
+    void testObstaclesMessageSerialization() {
+        ObstaclesValue obstaclesValue = new ObstaclesValue(
+                Arrays.asList(
+                        new Obstacle(5, 10, 1, 2),
+                        new Obstacle(10, 20, 2, 1)
+                ),
+                "0"
+        );
+        Mdp<ObstaclesValue> obstaclesMessage = new Mdp<>(Mdp.Cat.OBSTACLES, obstaclesValue);
+        String json = gson.toJson(obstaclesMessage);
+        assertEquals("{\"cat\":\"obstacles\",\"value\":{\"obstacles\":[{\"x\":5,\"y\":10,\"id\":1,\"d\":2},{\"x\":10,\"y\":20,\"id\":2,\"d\":1}],\"mode\":\"0\"}}", json);
     }
 
     @Test
-    public void testStatusMessageDeserialization() {
-        String json = "{\"cat\":\"status\",\"value\":{\"statusValue\":\"running\"}}";
-        Mdp mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.STATUS, mdp.getCat());
-        assertEquals(Value.StatusValue.RUNNING, mdp.getValue().getStatusValue());
-    }
-
-    @Test
-    public void testObstaclesMessageDeserialization() {
-        String json = "{\"cat\":\"obstacles\",\"value\":{\"obstaclesValue\":{\"obstacles\":[{\"x\":5,\"y\":10,\"id\":1,\"d\":2},{\"x\":10,\"y\":20,\"id\":2,\"d\":1}],\"mode\":\"0\"}}}";
-        Mdp mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.OBSTACLES, mdp.getCat());
-        ObstaclesValue obstaclesValue = mdp.getValue().getObstaclesValue();
-        assertNotNull(obstaclesValue);
-        List<Obstacle> obstacles = obstaclesValue.getObstacles();
-        assertEquals(2, obstacles.size());
-        assertEquals(5, obstacles.get(0).getX());
-        assertEquals(10, obstacles.get(0).getY());
-        assertEquals(1, obstacles.get(0).getId());
-        assertEquals(2, obstacles.get(0).getD());
-        assertEquals(10, obstacles.get(1).getX());
-        assertEquals(20, obstacles.get(1).getY());
-        assertEquals(2, obstacles.get(1).getId());
-        assertEquals(1, obstacles.get(1).getD());
+    void testObstaclesMessageDeserialization() {
+        String json = "{\"cat\":\"obstacles\",\"value\":{\"obstacles\":[{\"x\":5,\"y\":10,\"id\":1,\"d\":2},{\"x\":10,\"y\":20,\"id\":2,\"d\":1}],\"mode\":\"0\"}}";
+        Mdp<?> obstaclesMessage = gson.fromJson(json, Mdp.class);
+        assertEquals(Mdp.Cat.OBSTACLES, obstaclesMessage.getCat());
+        assertInstanceOf(ObstaclesValue.class, obstaclesMessage.getValue());
+        ObstaclesValue obstaclesValue = (ObstaclesValue) obstaclesMessage.getValue();
+        assertEquals(2, obstaclesValue.getObstacles().size());
+        assertEquals(5, obstaclesValue.getObstacles().get(0).getX());
+        assertEquals(10, obstaclesValue.getObstacles().get(0).getY());
+        assertEquals(1, obstaclesValue.getObstacles().get(0).getId());
+        assertEquals(2, obstaclesValue.getObstacles().get(0).getD());
         assertEquals("0", obstaclesValue.getMode());
     }
 
     @Test
-    public void testControlMessageDeserialization() {
-        String json = "{\"cat\":\"control\",\"value\":{\"controlValue\":\"start\"}}";
-        Mdp mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.CONTROL, mdp.getCat());
-        assertEquals("start", mdp.getValue().getControlValue());
-
-        json = "{\"cat\":\"control\",\"value\":{\"controlValue\":\"FW090\"}}";
-        mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.CONTROL, mdp.getCat());
-        assertEquals("FW090", mdp.getValue().getControlValue());
-
-        json = "{\"cat\":\"control\",\"value\":{\"controlValue\":\"BW085\"}}";
-        mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.CONTROL, mdp.getCat());
-        assertEquals("BW085", mdp.getValue().getControlValue());
-
-        json = "{\"cat\":\"control\",\"value\":{\"controlValue\":\"SNAP1_L\"}}";
-        mdp = gson.fromJson(json, Mdp.class);
-
-        assertEquals(Mdp.Cat.CONTROL, mdp.getCat());
-        assertEquals("SNAP1_L", mdp.getValue().getControlValue());
+    void testControlMessageSerialization() {
+        ParameterizedControlValue controlValue = new ParameterizedControlValue("FW", 90);
+        Mdp<ParameterizedControlValue> controlMessage = new Mdp<>(Mdp.Cat.CONTROL, controlValue);
+        String json = gson.toJson(controlMessage);
+        assertEquals("{\"cat\":\"control\",\"value\":\"FW090\"}", json);
     }
 
     @Test
-    public void testInvalidMessageHandling() {
-        String json = "{\"cat\":\"invalid\",\"value\":\"test\"}";
-        assertThrows(JsonSyntaxException.class, () -> gson.fromJson(json, Mdp.class));
-
-        String json2 = "{\"cat\":\"info\",\"value\":{\"infoValue\":\"invalid_info\"}}";
-        Mdp mdp = gson.fromJson(json2, Mdp.class);
-        assertEquals(Mdp.Cat.INFO, mdp.getCat());
-        assertEquals("invalid_info", mdp.getValue().getInfoValue());
-    }
-
-    @Test
-    public void testMessageRoundtrip() {
-        String[] jsons = {
-                "{\"cat\":\"info\",\"value\":{\"infoValue\":\"You are connected to the RPi!\"}}",
-                "{\"cat\":\"info\",\"value\":{\"infoValue\":\"Robot is ready!\"}}",
-                "{\"cat\":\"info\",\"value\":{\"infoValue\":{\"capturing_image\":{\"obstacle_id\":123}}}}",
-                "{\"cat\":\"error\",\"value\":{\"errorValue\":\"API is down, start command aborted.\"}}",
-                "{\"cat\":\"location\",\"value\":{\"locationValue\":{\"x\":1,\"y\":2,\"d\":3}}}"
+    void testControlMessageDeserialization() {
+        String[] controlJsonSamples = {
+                "{\"cat\":\"control\",\"value\":\"start\"}",
+                "{\"cat\":\"control\",\"value\":\"FW090\"}",
+                "{\"cat\":\"control\",\"value\":\"BW085\"}",
+                "{\"cat\":\"control\",\"value\":\"TL090\"}",
+                "{\"cat\":\"control\",\"value\":\"TR090\"}",
+                "{\"cat\":\"control\",\"value\":\"BL090\"}",
+                "{\"cat\":\"control\",\"value\":\"BR090\"}",
+                "{\"cat\":\"control\",\"value\":\"SNAP1_L\"}",
+                "{\"cat\":\"control\",\"value\":\"SNAP2_C\"}",
+                "{\"cat\":\"control\",\"value\":\"SNAP3_R\"}"
         };
 
-        for (String originalJson : jsons) {
-            Mdp mdp = gson.fromJson(originalJson, Mdp.class);
-            String serializedJson = gson.toJson(mdp);
-            JsonObject original = gson.fromJson(originalJson, JsonObject.class);
-            JsonObject serialized = gson.fromJson(serializedJson, JsonObject.class);
-            assertEquals(original, serialized);
+        String[] correctCommands = {"start", "FW090", "BW085", "TL090", "TR090", "BL090", "BR090", "SNAP1_L", "SNAP2_C", "SNAP3_R"};
+
+        for (int i = 0; i < controlJsonSamples.length; i++) {
+            String json = controlJsonSamples[i];
+            Mdp<?> controlMessage = gson.fromJson(json, Mdp.class);
+            assertEquals(Mdp.Cat.CONTROL, controlMessage.getCat());
+            assertInstanceOf(String.class, controlMessage.getValue());
+            assertEquals(correctCommands[i], controlMessage.getValue());
+        }
+    }
+
+    @Test
+    void testInvalidMessageHandling() {
+        String invalidJson = "{\"cat\":\"invalid\",\"value\":\"test\"}";
+        assertThrows(IllegalArgumentException.class, () -> {
+            gson.fromJson(invalidJson, Mdp.class);
+        });
+    }
+
+    @Test
+    void testInfoMessageRoundTrip() {
+        for (InfoValue infoValue : InfoValue.values()) {
+            Mdp<InfoValue> original = new Mdp<>(Mdp.Cat.INFO, infoValue);
+            String json = gson.toJson(original);
+            Mdp<?> deserialized = gson.fromJson(json, Mdp.class);
+
+            assertEquals(Mdp.Cat.INFO, deserialized.getCat());
+            assertInstanceOf(InfoValue.class, deserialized.getValue());
+            assertEquals(infoValue, deserialized.getValue());
+        }
+    }
+
+    @Test
+    void testErrorMessageRoundTrip() {
+        for (ErrorValue errorValue : ErrorValue.values()) {
+            Mdp<ErrorValue> original = new Mdp<>(Mdp.Cat.ERROR, errorValue);
+            String json = gson.toJson(original);
+            Mdp<?> deserialized = gson.fromJson(json, Mdp.class);
+
+            assertEquals(Mdp.Cat.ERROR, deserialized.getCat());
+            assertInstanceOf(ErrorValue.class, deserialized.getValue());
+            assertEquals(errorValue, deserialized.getValue());
+        }
+    }
+
+    @Test
+    void testStatusMessageRoundTrip() {
+        for (StatusValue statusValue : StatusValue.values()) {
+            Mdp<StatusValue> original = new Mdp<>(Mdp.Cat.STATUS, statusValue);
+            String json = gson.toJson(original);
+            Mdp<?> deserialized = gson.fromJson(json, Mdp.class);
+
+            assertEquals(Mdp.Cat.STATUS, deserialized.getCat());
+            assertInstanceOf(StatusValue.class, deserialized.getValue());
+            assertEquals(statusValue, deserialized.getValue());
+        }
+    }
+
+    @Test
+    void testLocationMessageRoundTrip() {
+        LocationValue location = new LocationValue(1, 2, 3);
+        Mdp<LocationValue> original = new Mdp<>(Mdp.Cat.LOCATION, location);
+        String json = gson.toJson(original);
+        Mdp<?> deserialized = gson.fromJson(json, Mdp.class);
+
+        assertEquals(Mdp.Cat.LOCATION, deserialized.getCat());
+        assertInstanceOf(LocationValue.class, deserialized.getValue());
+        LocationValue deserializedLocation = (LocationValue) deserialized.getValue();
+        assertEquals(location.getX(), deserializedLocation.getX());
+        assertEquals(location.getY(), deserializedLocation.getY());
+        assertEquals(location.getD(), deserializedLocation.getD());
+    }
+
+    @Test
+    void testImageRecognitionMessageRoundTrip() {
+        ImageRecValue imageRec = new ImageRecValue("A", "1");
+        Mdp<ImageRecValue> original = new Mdp<>(Mdp.Cat.IMAGE_REC, imageRec);
+        String json = gson.toJson(original);
+        Mdp<?> deserialized = gson.fromJson(json, Mdp.class);
+
+        assertEquals(Mdp.Cat.IMAGE_REC, deserialized.getCat());
+        assertInstanceOf(ImageRecValue.class, deserialized.getValue());
+
+        ImageRecValue deserializedImageRec = (ImageRecValue) deserialized.getValue();
+        assertEquals(imageRec.getImageId(), deserializedImageRec.getImageId());
+        assertEquals(imageRec.getObstacleId(), deserializedImageRec.getObstacleId());
+
+        ImageRecValue imageRec2 = new ImageRecValue("B", "2");
+        Mdp<ImageRecValue> original2 = new Mdp<>(Mdp.Cat.IMAGE_REC, imageRec2);
+        String json2 = gson.toJson(original2);
+        Mdp<?> deserialized2 = gson.fromJson(json2, Mdp.class);
+
+        assertEquals(Mdp.Cat.IMAGE_REC, deserialized2.getCat());
+        assertInstanceOf(ImageRecValue.class, deserialized2.getValue());
+
+        ImageRecValue deserializedImageRec2 = (ImageRecValue) deserialized2.getValue();
+        assertEquals(imageRec2.getImageId(), deserializedImageRec2.getImageId());
+        assertEquals(imageRec2.getObstacleId(), deserializedImageRec2.getObstacleId());
+    }
+
+    @Test
+    void testObstaclesMessageRoundTrip() {
+        ObstaclesValue obstaclesValue = new ObstaclesValue(
+                Arrays.asList(
+                        new Obstacle(5, 10, 1, 2),
+                        new Obstacle(10, 20, 2, 1)
+                ),
+                "0"
+        );
+        Mdp<ObstaclesValue> original = new Mdp<>(Mdp.Cat.OBSTACLES, obstaclesValue);
+        String json = gson.toJson(original);
+        Mdp<?> deserialized = gson.fromJson(json, Mdp.class);
+
+        assertEquals(Mdp.Cat.OBSTACLES, deserialized.getCat());
+        assertInstanceOf(ObstaclesValue.class, deserialized.getValue());
+        ObstaclesValue deserializedObstacles = (ObstaclesValue) deserialized.getValue();
+        assertEquals(obstaclesValue.getObstacles().size(), deserializedObstacles.getObstacles().size());
+        assertEquals(obstaclesValue.getMode(), deserializedObstacles.getMode());
+
+        for (int i = 0; i < obstaclesValue.getObstacles().size(); i++) {
+            Obstacle original_obstacle = obstaclesValue.getObstacles().get(i);
+            Obstacle deserialized_obstacle = deserializedObstacles.getObstacles().get(i);
+            assertEquals(original_obstacle.getX(), deserialized_obstacle.getX());
+            assertEquals(original_obstacle.getY(), deserialized_obstacle.getY());
+            assertEquals(original_obstacle.getId(), deserialized_obstacle.getId());
+            assertEquals(original_obstacle.getD(), deserialized_obstacle.getD());
+        }
+    }
+
+    @Test
+    void testControlMessageRoundTrip() {
+        String[] controlCommands = {"start", "FW090", "BW085", "TL090", "TR090", "BL090", "BR090", "SNAP1_L", "SNAP2_C", "SNAP3_R"};
+        for (String command : controlCommands) {
+            ParameterizedControlValue controlValue = ParameterizedControlValue.fromString(command);
+            Mdp<ParameterizedControlValue> original = new Mdp<>(Mdp.Cat.CONTROL, controlValue);
+            String json = gson.toJson(original);
+            Mdp<?> deserialized = gson.fromJson(json, Mdp.class);
+
+            assertEquals(Mdp.Cat.CONTROL, deserialized.getCat());
+            assertInstanceOf(String.class, deserialized.getValue());
+            assertEquals(command, deserialized.getValue());
         }
     }
 }
