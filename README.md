@@ -56,7 +56,7 @@ String json = "{\"cat\":\"info\",\"value\":\"Robot is ready!\"}";
 Mdp<?> message = gson.fromJson(json, Mdp.class);
 
 System.out.println(message.getCat()); // Outputs: INFO
-        System.out.println(message.getValue()); // Outputs: Robot is ready!
+System.out.println(message.getValue()); // Outputs: Robot is ready!
 ```
 
 3. Create and serialize Mdp object into JSON message:
