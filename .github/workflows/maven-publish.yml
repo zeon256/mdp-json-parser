@@ -2,8 +2,8 @@ name: Maven Package
 
 on:
   push:
-    tags:
-      - 'v*' # This will match any tag that starts with 'v'
+    branches:
+      - main
 
 jobs:
   build:
