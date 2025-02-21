@@ -12,7 +12,7 @@ To use this library in your Maven project, add the following dependency to your 
 <dependency>
     <groupId>com.github.zeon256</groupId>
     <artifactId>mdp-json-parser</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -24,11 +24,15 @@ For Android projects using Gradle, add the following to your build.gradle file:
 repositories {
     maven {
         url "https://maven.pkg.github.com/zeon256/mdp-json-parser"
+        credentials {
+            username = "YOUR_GITHUB_USERNAME"
+            password = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN" // make sure that this token only has read package access
+        }
     }
 }
 
 dependencies {
-    implementation 'com.github.zeon256:mdp-json-parser:1.1.0'
+    implementation 'com.github.zeon256:mdp-json-parser:1.2.0'
 }
 ```
 
