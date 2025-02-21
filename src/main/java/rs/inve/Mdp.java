@@ -17,7 +17,6 @@ public class Mdp {
     @Expose
     private Value value;
 
-
     public Mdp() {
     }
 
@@ -26,7 +25,6 @@ public class Mdp {
         this.cat = cat;
         this.value = value;
     }
-
 
     public Mdp.Cat getCat() {
         return cat;
@@ -85,7 +83,6 @@ public class Mdp {
         public String toString() {
             return this.value;
         }
-
         public String value() {
             return this.value;
         }
