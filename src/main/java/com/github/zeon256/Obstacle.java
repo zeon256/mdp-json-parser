@@ -1,11 +1,10 @@
 
-package rs.inve;
+package com.github.zeon256;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class LocationValue {
-
+public class Obstacle {
     @SerializedName("x")
     @Expose
     private int x;
@@ -14,18 +13,23 @@ public class LocationValue {
     @Expose
     private int y;
 
+    @SerializedName("id")
+    @Expose
+    private int id;
+
     @SerializedName("d")
     @Expose
     private int d;
 
 
-    public LocationValue() {
+    public Obstacle() {
     }
 
-    public LocationValue(int x, int y, int d) {
+    public Obstacle(int x, int y, int id, int d) {
         super();
         this.x = x;
         this.y = y;
+        this.id = id;
         this.d = d;
     }
 
@@ -35,33 +39,22 @@ public class LocationValue {
     public void setX(int x) {
         this.x = x;
     }
-
-    public LocationValue withX(int x) {
-        this.x = x;
-        return this;
-    }
-
     public int getY() {
         return y;
     }
     public void setY(int y) {
         this.y = y;
     }
-
-    public LocationValue withY(int y) {
-        this.y = y;
-        return this;
+    public int getId() {
+        return id;
     }
-
+    public void setId(int id) {
+        this.id = id;
+    }
     public int getD() {
         return d;
     }
     public void setD(int d) {
         this.d = d;
-    }
-
-    public LocationValue withD(int d) {
-        this.d = d;
-        return this;
     }
 }

@@ -1,4 +1,4 @@
-package rs.inve;
+package com.github.zeon256;
 
 import java.util.List;
 import com.google.gson.annotations.Expose;

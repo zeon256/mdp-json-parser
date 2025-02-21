@@ -1,4 +1,4 @@
-package rs.inve;
+package com.github.zeon256;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;

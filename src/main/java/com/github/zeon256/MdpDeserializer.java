@@ -1,7 +1,4 @@
-package rs.inve;
-
-import com.google.gson.*;
-import java.lang.reflect.Type;
+package com.github.zeon256;
 
 import com.google.gson.*;
 import java.lang.reflect.Type;

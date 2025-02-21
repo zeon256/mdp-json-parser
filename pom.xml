@@ -6,10 +6,10 @@
 
     <groupId>com.github.zeon256</groupId>
     <artifactId>mdp-json-parser</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 
     <properties>
-        <revision>1.1.0</revision>
+        <revision>1.2.0</revision>
         <maven.compiler.source>20</maven.compiler.source>
         <maven.compiler.target>20</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

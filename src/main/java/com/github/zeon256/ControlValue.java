@@ -1,4 +1,4 @@
-package rs.inve;
+package com.github.zeon256;
 
 public enum ControlValue {
     START("start"),
